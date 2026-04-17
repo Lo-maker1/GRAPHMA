@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Graphix Pro - Traceur avec Clavier Math</title>
+    <script src="https://unpkg.com/function-plot/dist/function-plot.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --bg: #f1f5f9;
+            --key-bg: #ffffff;
+            --key-hover: #e2e8f0;
+        }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background-color: var(--bg);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            margin: 0;
+        }
+        .container {
+            width: 100%;
+            max-width: 900px;
+            background: white;
+            padding: 1.5rem;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+        }
+        .screen-section {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 20px;
+        }
+        @media (max-width: 800px) {
+            .screen-section { grid-template-columns: 1fr; }
+        }
+        #plot {
+            width: 100%;
+            height: 450px;
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+        }
+        .control-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            gap: 8px;
+        }
+        input {
+            flex-grow: 1;
+            padding: 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 1.2rem;
+            outline: none;
+            transition: 0.2s;
+        }
+        input:focus { border-color: var(--primary); }
+        
+        /* Style du Clavier */
+        .keyboard {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+        }
+        .key {
+            padding: 12px 5px;
+            background: var(--key-bg);
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-align: center;
+            transition: all 0.1s;
+            user-select: none;
+        }
+        .key:hover { background: var(--key-hover); border-color: #94a3b8; }
+        .key:active { transform: translateY(2px); background: #cbd5e1; }
+        .key.op { color: var(--primary); background: #eff6ff; }
+        .key.fn { color: #059669; background: #ecfdf5; }
+        .key.clear { color: #dc2626; background: #fef2f2; grid-column: span 2; }
+
+        button#draw-btn {
+            width: 100%;
+            padding: 15px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2 style="margin-top:0">Graphix Pro</h2>
+    
+    <div class="input-wrapper" style="margin-bottom: 20px;">
+        <input type="text" id="equation" placeholder="Entrez votre fonction..." value="sin(x) * x">
+    </div>
+
+    <div class="screen-section">
+        <div id="plot"></div>
+
+        <div class="control-panel">
+            <div class="keyboard">
+                <div class="key fn" onclick="insert('sin(')">sin</div>
+                <div class="key fn" onclick="insert('cos(')">cos</div>
+                <div class="key fn" onclick="insert('tan(')">tan</div>
+                <div class="key fn" onclick="insert('log(')">log</div>
+                
+                <div class="key fn" onclick="insert('exp(')">exp</div>
+                <div class="key fn" onclick="insert('sqrt(')">√</div>
+                <div class="key fn" onclick="insert('abs(')">abs</div>
+                <div class="key op" onclick="insert('^')">xʸ</div>
+
+                <div class="key op" onclick="insert('x')">x</div>
+                <div class="key op" onclick="insert('(')">(</div>
+                <div class="key op" onclick="insert(')')">)</div>
+                <div class="key op" onclick="insert('/')">÷</div>
+                
+                <div class="key" onclick="insert('7')">7</div>
+                <div class="key" onclick="insert('8')">8</div>
+                <div class="key" onclick="insert('9')">9</div>
+                <div class="key op" onclick="insert('*')">×</div>
+
+                <div class="key" onclick="insert('4')">4</div>
+                <div class="key" onclick="insert('5')">5</div>
+                <div class="key" onclick="insert('6')">6</div>
+                <div class="key op" onclick="insert('-')">-</div>
+
+                <div class="key" onclick="insert('1')">1</div>
+                <div class="key" onclick="insert('2')">2</div>
+                <div class="key" onclick="insert('3')">3</div>
+                <div class="key op" onclick="insert('+')">+</div>
+
+                <div class="key" onclick="insert('0')">0</div>
+                <div class="key" onclick="insert('.')">.</div>
+                <div class="key clear" onclick="clearInput()">Effacer</div>
+            </div>
+            
+            <button id="draw-btn" onclick="draw()">Tracer la courbe</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const input = document.getElementById('equation');
+
+    function insert(val) {
+        const start = input.selectionStart;
+        const end = input.selectionEnd;
+        const text = input.value;
+        
+        // Insère le texte à la position du curseur
+        input.value = text.substring(0, start) + val + text.substring(end);
+        
+        // Replace le curseur
+        input.focus();
+        const newCursorPos = start + val.length;
+        input.setSelectionRange(newCursorPos, newCursorPos);
+    }
+
+    function clearInput() {
+        input.value = "";
+        input.focus();
+    }
+
+    function draw() {
+        try {
+            const expr = input.value;
+            // On nettoie un peu l'expression pour FunctionPlot
+            const cleanExpr = expr.replace(/exp/g, 'exp'); 
+
+            functionPlot({
+                target: "#plot",
+                width: document.getElementById('plot').offsetWidth,
+                height: 450,
+                grid: true,
+                data: [{
+                    fn: cleanExpr,
+                    color: '#2563eb',
+                    sampler: 'builtIn',
+                    graphType: 'polyline'
+                }],
+                xAxis: { domain: [-10, 10] },
+                yAxis: { domain: [-10, 10] }
+            });
+        } catch (err) {
+            console.error(err);
+            alert("Vérifiez la syntaxe de votre fonction.");
+        }
+    }
+
+    // Tracer au démarrage
+    window.onload = draw;
+    // Redessiner si on redimensionne la fenêtre
+    window.onresize = draw;
+
+    input.addEventListener('keypress', (e) => { if(e.key === 'Enter') draw(); });
+</script>
+
+</body>
+</html>

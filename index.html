@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Graphix Educ - L'Étude de Fonction Gratuite</title>
+    <title>Graphix Educ - L'Étude de Fonction Pro</title>
     <script src="https://unpkg.com/function-plot/dist/function-plot.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/12.4.0/math.all.js"></script>
     <style>
@@ -19,7 +19,6 @@
 
         #plot { width: 100%; height: 500px; border: 1px solid #e2e8f0; border-radius: 15px; background: white; }
 
-        /* Panneau d'étude détaillée */
         .analysis-panel {
             background: #ffffff; border: 1px solid #e2e8f0; border-radius: 15px; padding: 20px;
             margin-top: 25px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
@@ -28,15 +27,16 @@
         .card { background: #f1f5f9; padding: 15px; border-radius: 10px; border-top: 4px solid var(--primary); }
         .card h4 { margin: 0 0 10px 0; color: #334155; font-size: 0.9rem; text-transform: uppercase; }
 
-        /* Clavier */
         .keyboard { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-        .key { padding: 12px; background: white; border: 1px solid #cbd5e1; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .key { padding: 12px; background: white; border: 1px solid #cbd5e1; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.2s; text-align: center; }
         .key:hover { background: #f1f5f9; border-color: var(--primary); }
         .key.action { background: var(--primary); color: white; border: none; grid-column: span 4; padding: 18px; font-size: 1rem; }
 
         .variation-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9rem; }
         .variation-table td { border: 1px solid #cbd5e1; padding: 8px; text-align: center; }
         .arrow { font-size: 1.2rem; font-weight: bold; }
+        
+        .error-msg { color: #dc2626; background: #fef2f2; padding: 15px; border-radius: 8px; border: 1px solid #fecaca; grid-column: 1 / -1; }
     </style>
 </head>
 <body>
@@ -49,7 +49,7 @@
 
     <div class="grid">
         <div class="main">
-            <input type="text" id="equation" style="width:100%; padding:18px; font-size:1.4rem; border-radius:12px; border:2px solid #e2e8f0; margin-bottom:15px; font-family:monospace;" value="x^2 - 2x - 3">
+            <input type="text" id="equation" style="width:100%; padding:18px; font-size:1.4rem; border-radius:12px; border:2px solid #e2e8f0; margin-bottom:15px; font-family:monospace; box-sizing: border-box;" value="x^2 - 2x - 3">
             <div id="plot"></div>
         </div>
 
@@ -89,8 +89,7 @@
 
     <div class="analysis-panel" id="analysis-box">
         <h2 style="margin-top:0; color:#1e293b; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px;">📉 Rapport d'Analyse Mathématique</h2>
-        <div class="analysis-grid" id="results">
-            </div>
+        <div class="analysis-grid" id="results"></div>
     </div>
 </div>
 
@@ -107,9 +106,12 @@
     function clearInput() { input.value = ""; }
 
     function process() {
-        const expr = input.value;
-        draw(expr);
-        analyze(expr);
+        const rawExpr = input.value;
+        // Nettoyage : transforme "2x" en "2*x" pour Math.js
+        const cleanExpr = rawExpr.replace(/(\d)([a-zA-Z(])/g, '$1*$2');
+        
+        draw(cleanExpr);
+        analyze(cleanExpr);
     }
 
     function draw(expr) {
@@ -124,22 +126,29 @@
                     { fn: expr, color: '#2563eb', graphType: 'scatter', nSamples: 60 }
                 ]
             });
-        } catch(e) { alert("Erreur de tracé."); }
+        } catch(e) { 
+            console.error(e);
+        }
     }
 
     function analyze(expr) {
         const results = document.getElementById('results');
         try {
-            // 1. Dérivée
+            // 1. Dérivée formelle
             const df = math.derivative(expr, 'x').toString();
             
-            // 2. Domaine (Analyse textuelle simplifiée)
+            // 2. Domaine de définition simplifié
             let dom = "D = ℝ";
             if(expr.includes('/')) dom = "D = ℝ \\ {valeurs interdites}";
-            if(expr.includes('ln')) dom = "D = ]0 ; +∞[ (à ajuster selon l'argument)";
+            if(expr.includes('ln')) dom = "D = ]0 ; +∞[ (selon l'argument)";
+            if(expr.includes('sqrt')) dom = "D = [Valeurs ≥ 0]";
 
-            // 3. Calcul de points clés
-            const f0 = math.evaluate(expr, {x: 0});
+            // 3. Calcul de f(0)
+            let f0;
+            try { 
+                f0 = math.evaluate(expr, {x: 0});
+                f0 = typeof f0 === 'number' ? f0.toFixed(2) : f0.toString();
+            } catch(e) { f0 = "Non défini"; }
 
             results.innerHTML = `
                 <div class="card">
@@ -152,21 +161,25 @@
                 </div>
                 <div class="card">
                     <h4>📊 Sens de Variation</h4>
-                    <p>Basé sur le signe de <b>${df}</b>.</p>
+                    <p>Étude basée sur le signe de <b>${df}</b>.</p>
                     <table class="variation-table">
-                        <tr><td>x</td><td>-∞</td><td>Point Crit.</td><td>+∞</td></tr>
-                        <tr><td>f'(x)</td><td>...</td><td>0</td><td>...</td></tr>
-                        <tr><td>f(x)</td><td class="arrow">↘</td><td>min/max</td><td class="arrow">↗</td></tr>
+                        <tr><td>x</td><td>-∞</td><td>Points Crit.</td><td>+∞</td></tr>
+                        <tr><td>f'(x)</td><td colspan="3">Signe de ${df}</td></tr>
+                        <tr><td>f(x)</td><td class="arrow">↘</td><td>Extremum</td><td class="arrow">↗</td></tr>
                     </table>
                 </div>
                 <div class="card">
-                    <h4>🎯 Points Remarquables</h4>
+                    <h4>🎯 Analyse Graphique</h4>
                     <p>• Intersection Axe Y : <b>(0 ; ${f0})</b></p>
-                    <p>• Étude des limites : Vérifier aux bornes de ${dom}.</p>
+                    <p>• Les points bleus marquent les étapes du tracé numérique.</p>
                 </div>
             `;
         } catch(err) {
-            results.innerHTML = "<p style='color:red'>Erreur d'analyse. Vérifiez l'écriture de la fonction.</p>";
+            results.innerHTML = `
+                <div class="error-msg">
+                    <strong>⚠️ Analyse impossible</strong><br>
+                    Vérifiez que la fonction est bien écrite (ex: utilisez * pour multiplier : 2*x au lieu de 2x).
+                </div>`;
         }
     }
 
